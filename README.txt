@@ -1,0 +1,1 @@
+To intialize the datasets run rating_reader_u.py

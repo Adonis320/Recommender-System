@@ -1,5 +1,7 @@
 # copied and modified from https://github.com/louiseGAN514/Probabilistic-Matrix-Factorization
 
+# convert u.txt to csv 
+
 import pandas as pd
 import csv
 

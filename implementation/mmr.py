@@ -10,22 +10,19 @@ class MMR(object):
         self.user_vector = user_vector
         self._lambda = _lambda  # Parameter for MMR    
 
-        self.indexed_movies = {} # movies with rank
-        self.similarity_matrix = []
-        self.similarity_with_user = []
-        self.k = k
+        self.indexed_movies = {} # movies with respective indexes
+        self.similarity_matrix = [] # similarity matrix between the movies themselves
+        self.similarity_with_user = [] # similarity between each movie and the user
+        self.k = k # number of movies to return
         
         a = 0
-        for movie in recommended_movies:
+        for movie in recommended_movies: # to map the movies to respective indexes, used for the similarity matrix
             self.indexed_movies[movie]= a    
             a+=1 
 
-        #self.compute_similarity_matrix_default()
         self.compute_similarity_matrix()
-        #self.compute_similarity_with_user_default()
         self.compute_similarity_with_user()
 
-        print("DONE")
         """
         For testing purposes: MMR should return [102,302,4,70,51]
         self._lambda = 0.5
@@ -37,28 +34,30 @@ class MMR(object):
     
     def rank(self):
         s = []
-        r = self.recommended_movies
-        r_s = r # R\S
+        r_s = self.recommended_movies # R\S
         r_s = np.array(r_s) # to use np.delete
 
-        while(len(s)<self.k):#len(r)): # we rerank all the movies
-            scores_1 = []
-            index_scores_1 = []
+        while(len(s)<self.k): # we rerank all the movies
+            scores_1 = [] # lamba*sim(Di,Q)-(1-lambda)*max(sim(Di,Dj))
+            index_scores_1 = [] # to reindex the movies while reiterating
+
             for i in r_s:
-                scores_2 = []
+                scores_2 = [] # sim(Di,Dj)
                 for j in s:
                     scores_2.append(self.similarity_matrix[self.indexed_movies.get(i)][self.indexed_movies.get(j)])
                 if(len(scores_2)==0):
                     max_value_2 = 0
                 else:
-                    max_value_2 = max(scores_2)
+                    max_value_2 = max(scores_2) # max(sim(Di,Dj))
                 scores_1.append(self._lambda*self.similarity_with_user[self.indexed_movies.get(i)]-(1-self._lambda)*max_value_2)
                 index_scores_1.append(i)  
-            max_value_1 = max(scores_1)
-            max_index_1 = scores_1.index(max_value_1)
-            movie = index_scores_1[max_index_1]
-            s.append(movie) 
-            index_delete = np.argwhere(r_s==movie)
+
+            max_value_1 = max(scores_1) # maximal MMR
+            max_index_1 = scores_1.index(max_value_1) # find the index of the movie with maximal MMR
+            movie = index_scores_1[max_index_1] # find the movie with maximal MMR
+            s.append(movie)
+
+            index_delete = np.argwhere(r_s==movie) # index of the movie to delete in R\S
             r_s = np.delete(r_s, index_delete)
         return s
 
@@ -70,14 +69,10 @@ class MMR(object):
             self.similarity_matrix.append(sim)            
 
     def compute_similarity(self,v1,v2):
-
-        #return  spatial.distance.cosine(v1, v2)
-        
         prod = self.dot_product(v1, v2)
         len1 = math.sqrt(self.dot_product(v1, v1))
         len2 = math.sqrt(self.dot_product(v2, v2))
         return round((prod / (len1 * len2)),3)
-        
 
     def dot_product(self,v1, v2):
         return sum(map(lambda x: x[0] * x[1], zip(v1, v2)))
