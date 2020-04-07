@@ -3,26 +3,25 @@ import math
 from scipy import spatial
 
 class MMR(object):
-    def __init__(self, item_vector, recommended_movies, user_vector, _lambda, k=10):
+    def __init__(self, recommended_movies, userId, similarity_matrix, similarity_with_user, _lambda, k=10):
         
-        self.item_vector = item_vector  # Vector of movies with caracteristics
         self.recommended_movies = recommended_movies # Ranked movies
-        self.user_vector = user_vector
+        self.userId = userId
         self._lambda = _lambda  # Parameter for MMR    
 
-        self.indexed_movies = {} # movies with respective indexes
-        self.similarity_matrix = [] # similarity matrix between the movies themselves
-        self.similarity_with_user = [] # similarity between each movie and the user
+        #self.indexed_movies = {} # movies with respective indexes
+        self.similarity_matrix = similarity_matrix # similarity matrix between the movies themselves
+        self.similarity_with_user = similarity_with_user # similarity between each movie and the user
         self.k = k # number of movies to return
         
+        #self.compute_similarity_with_user()
+        """
         a = 0
         for movie in recommended_movies: # to map the movies to respective indexes, used for the similarity matrix
             self.indexed_movies[movie]= a    
             a+=1 
-
-        self.compute_similarity_matrix()
-        self.compute_similarity_with_user()
-
+        """
+        #self.compute_similarity_matrix()
         """
         For testing purposes: MMR should return [102,302,4,70,51]
         self._lambda = 0.5
@@ -44,12 +43,12 @@ class MMR(object):
             for i in r_s:
                 scores_2 = [] # sim(Di,Dj)
                 for j in s:
-                    scores_2.append(self.similarity_matrix[self.indexed_movies.get(i)][self.indexed_movies.get(j)])
-                if(len(scores_2)==0):
+                    scores_2.append(self.similarity_matrix[i][j])
+                if(len(scores_2)==0):# for the first iteration
                     max_value_2 = 0
                 else:
                     max_value_2 = max(scores_2) # max(sim(Di,Dj))
-                scores_1.append(self._lambda*self.similarity_with_user[self.indexed_movies.get(i)]-(1-self._lambda)*max_value_2)
+                scores_1.append(self._lambda*self.similarity_with_user.get(self.userId)[i]-(1-self._lambda)*max_value_2)
                 index_scores_1.append(i)  
 
             max_value_1 = max(scores_1) # maximal MMR
@@ -61,6 +60,7 @@ class MMR(object):
             r_s = np.delete(r_s, index_delete)
         return s
 
+    """
     def compute_similarity_matrix(self):
         for m1 in self.recommended_movies:
             sim = []
@@ -75,8 +75,10 @@ class MMR(object):
         return round((prod / (len1 * len2)),3)
 
     def dot_product(self,v1, v2):
-        return sum(map(lambda x: x[0] * x[1], zip(v1, v2)))
+       # return sum(map(lambda x: x[0] * x[1], zip(v1, v2)))
+       return sum([x*y for x,y in zip(v1,v2)])
 
     def compute_similarity_with_user(self):
         for m in self.recommended_movies:
             self.similarity_with_user.append(self.compute_similarity(self.item_vector[self.indexed_movies.get(m)],self.user_vector))
+    """
