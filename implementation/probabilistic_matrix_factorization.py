@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # copied and modified from https://github.com/louiseGAN514/Probabilistic-Matrix-Factorization
 import numpy as np
-from numpy import linalg as LA
 
 class PMF(object):
     def __init__(self, num_feat=10, epsilon=1, _lambda=0.1, momentum=0.8, maxepoch=10, num_batches=10, batch_size=1000):

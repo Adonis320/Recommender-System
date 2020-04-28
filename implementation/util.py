@@ -1,6 +1,4 @@
 import math
-from math import sqrt
-from decimal import Decimal
 
 class UTIL(object):
     def __init__(self):

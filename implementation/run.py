@@ -27,8 +27,6 @@ if __name__ == "__main__":
 
     util = UTIL()
 
-    print(len(inv_lst))
-
     similarity_matrix = [] # similarity matrix between movies
     similarity_with_users = {} # similarity matrixes between each user and all movies
     for m1 in pmf.w_Item:
