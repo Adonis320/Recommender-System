@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # copied and modified from https://github.com/louiseGAN514/Probabilistic-Matrix-Factorization
 import numpy as np
+from numpy import linalg as LA
 
 class PMF(object):
     def __init__(self, num_feat=10, epsilon=1, _lambda=0.1, momentum=0.8, maxepoch=10, num_batches=10, batch_size=1000):
@@ -112,7 +113,7 @@ class PMF(object):
         print(self.w_User.shape)
 
     def predict(self, invID):
-        return np.dot(self.w_Item, self.w_User[int(invID), :]) + self.mean_inv  # numpy.dot 点乘
+        return np.dot(self.w_Item, self.w_User[int(invID), :])+ self.mean_inv  # numpy.dot 点乘
 
     # ****************Set parameters by providing a parameter dictionary.  ***********#
     def set_params(self, parameters):
@@ -142,5 +143,4 @@ class PMF(object):
         for inv in inv_lst:
             precision_acc += intersection_cnt.get(inv, 0) / float(k) # how many movies hit
             recall_acc += intersection_cnt.get(inv, 0) / float(invPairs_cnt[int(inv)])
-
-        return precision_acc / len(inv_lst), recall_acc / len(inv_lst)
+        return precision_acc / len(inv_lst), recall_acc / len(inv_lst), 2*(precision_acc/len(inv_lst))*(recall_acc/len(inv_lst))/((precision_acc/len(inv_lst))+(recall_acc/len(inv_lst)))

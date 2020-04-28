@@ -9,19 +9,9 @@ class MMR(object):
         self.userId = userId
         self._lambda = _lambda  # Parameter for MMR    
 
-        #self.indexed_movies = {} # movies with respective indexes
         self.similarity_matrix = similarity_matrix # similarity matrix between the movies themselves
         self.similarity_with_user = similarity_with_user # similarity between each movie and the user
         self.k = k # number of movies to return
-        
-        #self.compute_similarity_with_user()
-        """
-        a = 0
-        for movie in recommended_movies: # to map the movies to respective indexes, used for the similarity matrix
-            self.indexed_movies[movie]= a    
-            a+=1 
-        """
-        #self.compute_similarity_matrix()
         """
         For testing purposes: MMR should return [102,302,4,70,51]
         self._lambda = 0.5
@@ -59,26 +49,3 @@ class MMR(object):
             index_delete = np.argwhere(r_s==movie) # index of the movie to delete in R\S
             r_s = np.delete(r_s, index_delete)
         return s
-
-    """
-    def compute_similarity_matrix(self):
-        for m1 in self.recommended_movies:
-            sim = []
-            for m2 in self.recommended_movies:
-               sim.append(self.compute_similarity(self.item_vector[self.indexed_movies.get(m1)],self.item_vector[self.indexed_movies.get(m2)]))
-            self.similarity_matrix.append(sim)            
-
-    def compute_similarity(self,v1,v2):
-        prod = self.dot_product(v1, v2)
-        len1 = math.sqrt(self.dot_product(v1, v1))
-        len2 = math.sqrt(self.dot_product(v2, v2))
-        return round((prod / (len1 * len2)),3)
-
-    def dot_product(self,v1, v2):
-       # return sum(map(lambda x: x[0] * x[1], zip(v1, v2)))
-       return sum([x*y for x,y in zip(v1,v2)])
-
-    def compute_similarity_with_user(self):
-        for m in self.recommended_movies:
-            self.similarity_with_user.append(self.compute_similarity(self.item_vector[self.indexed_movies.get(m)],self.user_vector))
-    """

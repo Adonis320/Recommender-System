@@ -27,8 +27,10 @@ if __name__ == "__main__":
 
     util = UTIL()
 
-    similarity_matrix = []
-    similarity_with_users = {}
+    print(len(inv_lst))
+
+    similarity_matrix = [] # similarity matrix between movies
+    similarity_with_users = {} # similarity matrixes between each user and all movies
     for m1 in pmf.w_Item:
         sim = []
         for m2 in pmf.w_Item:
@@ -41,9 +43,6 @@ if __name__ == "__main__":
         for m1 in pmf.w_Item:
             similarity_with_users.get(int(inv)).append(util.compute_similarity(m1,pmf.w_User[int(inv),:]))
     print("Similarity with users Calculated")
-
-
-    
 
 
     k = 10 # number of movies returned by MMR
@@ -61,12 +60,12 @@ if __name__ == "__main__":
     invPairs_cnt = np.bincount(np.array(test_data[:, 0], dtype='int32')) # counts the number of ratings for each user
     precision_acc = 0.0
     recall_acc = 0.0
+    f1 = 0.0
     for inv in inv_lst:
         precision_acc += intersection_cnt.get(inv, 0) / float(k) # how many movies hit
         recall_acc += intersection_cnt.get(inv, 0) / float(invPairs_cnt[int(inv)])
-    print("MMR: precision_acc = " +str(precision_acc / len(inv_lst))+" recall_acc ="+str(recall_acc / len(inv_lst)))
-    
-    #TODO for the precision comparison number of users for MMR is different than the number of users used by PMF topK
+    f1 = 2*(precision_acc/len(inv_lst))*(recall_acc/len(inv_lst))/((precision_acc/len(inv_lst))+(recall_acc/len(inv_lst)))
+    print("MMR: precision_acc = " +str(precision_acc / len(inv_lst))+" recall_acc = "+str(recall_acc / len(inv_lst)) + " F1 = "+ str(f1))
 
     """
     # Check performance by plotting train and test errors
@@ -79,4 +78,4 @@ if __name__ == "__main__":
     plt.grid()
     plt.show()
     """
-    print("PMF: precision_acc,recall_acc:" + str(pmf.topK(test_data)))
+    print("PMF: precision_acc,recall_acc,F1:" + str(pmf.topK(test_data)))
