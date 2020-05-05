@@ -15,8 +15,8 @@ if __name__ == "__main__":
     pmf.set_params({"num_feat": 10, "epsilon": 1, "_lambda": 0.1, "momentum": 0.8, "maxepoch": 10, "num_batches": 100,
                     "batch_size": 1000})
 
-    #pmf.fit(train_data, test_data)
-    pmf.fitBPR(train_data,test_data,4,1,1,1)
+    pmf.fit(train_data, test_data)
+    #pmf.fitBPR(train_data,test_data,4,1,1,1)
 
     inv_lst = np.unique(test_data[:, 0]) # users list in the test data
     
@@ -44,15 +44,25 @@ if __name__ == "__main__":
             similarity_with_users.get(int(inv)).append(util.compute_similarity(m1,pmf.w_User[int(inv),:]))
     print("Similarity with users Calculated")
 
+    k = 10 # number of movies returned by MMR
+    mmr_pred = {}
+    mmr_lambda = 1
+    for i in range(1,len(inv_lst)): 
+        if(pred.get(i) is not None): # some users don't exist in the test data
+            mmr = MMR(pred.get(i),i,similarity_matrix,similarity_with_users,mmr_lambda,k) 
+            mmr_pred[i] = mmr.rank()
+    
+    util.evaluateMMR(mmr_pred,test_data,10,similarity_with_users,mmr_lambda)
 
     k = 10 # number of movies returned by MMR
     mmr_pred = {}
+    mmr_lambda = 0.5
     for i in range(1,len(inv_lst)): 
         if(pred.get(i) is not None): # some users don't exist in the test data
-            mmr = MMR(pred.get(i),i,similarity_matrix,similarity_with_users,1,k) 
+            mmr = MMR(pred.get(i),i,similarity_matrix,similarity_with_users,mmr_lambda,k) 
             mmr_pred[i] = mmr.rank()
     
-    util.evaluateMMR(mmr_pred,test_data,10,inv_lst)
+    util.evaluateMMR(mmr_pred,test_data,10,similarity_with_users,mmr_lambda)
 
     """
     # Check performance by plotting train and test errors
