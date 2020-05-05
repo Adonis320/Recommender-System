@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 # copied and modified from https://github.com/louiseGAN514/Probabilistic-Matrix-Factorization
 import numpy as np
+from numpy import array
+import itertools
+from util import UTIL
+import math
+import random
+
 
 class PMF(object):
     def __init__(self, num_feat=10, epsilon=1, _lambda=0.1, momentum=0.8, maxepoch=10, num_batches=10, batch_size=1000):
@@ -128,18 +134,120 @@ class PMF(object):
     def topK(self, test_vec, k=10):
         inv_lst = np.unique(test_vec[:, 0]) # unique users
         pred = {}
+
+        mrr = 0
+        positive_pred = {}
+
         for inv in inv_lst: 
             if pred.get(inv, None) is None: 
                 pred[inv] = np.argsort(self.predict(inv))[-k:]  # numpy.argsort索引排序 # argsort returns indexes that would sort the array, index is a movie
-                                                                # we take the k last indexes: the best k movies
+                                                           # we take the k last indexes: the best k movies
+                positive_pred[inv] = []     
+
+        
         intersection_cnt = {}
         for i in range(test_vec.shape[0]):
             if test_vec[i, 1] in pred[test_vec[i, 0]]: # for each rating if the movie is in the movie list of predictions for the user
                 intersection_cnt[test_vec[i, 0]] = intersection_cnt.get(test_vec[i, 0], 0) + 1 # we increment, second argument of get is default value
+                positive_pred[test_vec[i,0]].append(test_vec[i,1])
         invPairs_cnt = np.bincount(np.array(test_vec[:, 0], dtype='int32')) # counts the number of ratings for each user
+
+        for inv in inv_lst: 
+            ranked = False
+            for movie in pred[inv]:
+                if(movie in positive_pred[inv]):
+                    if(ranked == False):
+                        ranked = True
+                        mrr += 1/(np.where(pred[inv]==movie)[0][0]+1)
+
         precision_acc = 0.0
         recall_acc = 0.0
         for inv in inv_lst:
             precision_acc += intersection_cnt.get(inv, 0) / float(k) # how many movies hit
             recall_acc += intersection_cnt.get(inv, 0) / float(invPairs_cnt[int(inv)])
-        return precision_acc / len(inv_lst), recall_acc / len(inv_lst), 2*(precision_acc/len(inv_lst))*(recall_acc/len(inv_lst))/((precision_acc/len(inv_lst))+(recall_acc/len(inv_lst)))
+        return precision_acc / len(inv_lst), recall_acc / len(inv_lst), 2*(precision_acc/len(inv_lst))*(recall_acc/len(inv_lst))/((precision_acc/len(inv_lst))+(recall_acc/len(inv_lst))),mrr/len(inv_lst)
+
+    def fitBPR(self, train_vec, test_vec, threshold, lambda_user, lambda_pos, lambda_neg):
+
+        self.mean_inv = np.mean(train_vec[:, 2])  # 评分平均值
+        
+        num_user = int(max(np.amax(train_vec[:, 0]), np.amax(test_vec[:, 0]))) + 1  # 第0列，user总数
+        num_item = int(max(np.amax(train_vec[:, 1]), np.amax(test_vec[:, 1]))) + 1  # 第1列，movie总数
+        
+        if (self.w_Item is None):
+            self.w_Item = 0.1 * np.random.randn(num_item, self.num_feat)  # numpy.random.randn 电影 M x D 正态分布矩阵
+            self.w_User = 0.1 * np.random.randn(num_user, self.num_feat)  # numpy.random.randn 用户 N x D 正态分布矩阵
+
+        triples = self.constructTriples(train_vec,num_user,num_item,threshold)
+
+        util = UTIL()
+
+        random.shuffle(triples)
+        
+        for index in range(len(triples)):
+            x_uij = util.dot_product(self.w_Item[int(triples[index][1])],self.w_User[int(triples[index][0])]) - util.dot_product(self.w_Item[int(triples[index][2])],self.w_User[int(triples[index][0])])
+            """
+            s_user = np.square(self.w_User[int(triples[index][0])])
+            ms_user = np.mean(s_user)
+            rms_user = np.sqrt(ms_user)
+
+            s_pos = np.square(self.w_Item[int(triples[index][1])])
+            ms_pos = np.mean(s_pos)
+            rms_pos = np.sqrt(ms_pos)
+
+            s_neg = np.square(self.w_Item[int(triples[index][2])])
+            ms_neg = np.mean(s_neg)
+            rms_neg = np.sqrt(ms_neg)
+
+            theta_user = self.epsilon*( (math.exp(-x_uij)/(1+math.exp(-x_uij)))*(self.w_Item[int(triples[index][1])]-self.w_Item[int(triples[index][2])])+self._lambda*rms_user)
+            theta_pos = self.epsilon*( (math.exp(-x_uij)/(1+math.exp(-x_uij)))*(self.w_User[int(triples[index][0])])+self._lambda*rms_pos)
+            theta_neg = self.epsilon*( (math.exp(-x_uij)/(1+math.exp(-x_uij)))*(-self.w_User[int(triples[index][0])])+self._lambda*rms_neg)
+            """
+             #without RMS
+            theta_user = self.epsilon*( (math.exp(-x_uij)/(1+math.exp(-x_uij)))*(self.w_Item[int(triples[index][1])]-self.w_Item[int(triples[index][2])])+self._lambda*self.w_User[int(triples[index][0])])
+            theta_pos = self.epsilon*( (math.exp(-x_uij)/(1+math.exp(-x_uij)))*(self.w_User[int(triples[index][0])])+self._lambda*self.w_Item[int(triples[index][1])])
+            theta_neg = self.epsilon*( (math.exp(-x_uij)/(1+math.exp(-x_uij)))*(-self.w_User[int(triples[index][0])])+self._lambda*self.w_Item[int(triples[index][2])])
+            
+
+            self.w_User[int(triples[index][0])] = theta_user
+            self.w_Item[int(triples[index][1])] = theta_pos
+            self.w_Item[int(triples[index][2])] = theta_neg
+            if(index%100000 == 0):
+                print("Iteration "+ str(index)+" PMF-BPR: precision_acc,recall_acc,F1,MRR:" + str(self.topK(test_vec)))
+
+    def constructTriples(self, train_vec, num_user, num_item, threshold):
+        """
+        hits_matrix = np.zeros((num_user, num_item))  # used to identify positive and negative items
+        for i in range(len(train_vec)):
+            hits_matrix[int(train_vec[i][0])][int(train_vec[i][1])] = 1
+        """
+
+        positive = {}
+        negative = {}
+
+        for user in range(1,num_user):
+            positive[user] = []
+            negative[user] = []
+
+        for i in range(len(train_vec)):
+            if(train_vec[i,2]>=threshold):
+                positive.get(train_vec[i,0]).append(train_vec[i,1])
+            else:
+                negative.get(train_vec[i,0]).append(train_vec[i,1])
+
+        triples = []
+        for user in range(1,num_user):
+            user_triples = []
+            for combination in itertools.product([user], positive.get(user), negative.get(user)):
+                user_triples.append(list(combination))
+            triples += user_triples
+        
+        print("Triples Constructed")
+
+        return triples
+
+        
+
+
+
+
