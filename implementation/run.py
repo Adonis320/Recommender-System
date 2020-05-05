@@ -16,7 +16,7 @@ if __name__ == "__main__":
                     "batch_size": 1000})
 
     #pmf.fit(train_data, test_data)
-    pmf.fitBPR(train_data,test_data,4,0.1,0.1,0.1)
+    pmf.fitBPR(train_data,test_data,4,1,1,1)
 
     inv_lst = np.unique(test_data[:, 0]) # users list in the test data
     
