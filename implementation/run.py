@@ -12,11 +12,11 @@ if __name__ == "__main__":
     pmf = PMF()
     train_data = load_training_data()
     test_data = load_test_data()
-    pmf.set_params({"num_feat": 10, "epsilon": 1, "_lambda": 0.1, "momentum": 0.8, "maxepoch": 10, "num_batches": 100,
+    pmf.set_params({"num_feat": 20, "epsilon": 1, "_lambda": 0.1, "momentum": 0.8, "maxepoch": 10, "num_batches": 100,
                     "batch_size": 1000})
 
     pmf.fit(train_data, test_data)
-    #pmf.fitBPR(train_data,test_data,4,1,1,1)
+    #pmf.fitBPR(train_data,test_data,4,0.01,0.01,0.01)
 
     inv_lst = np.unique(test_data[:, 0]) # users list in the test data
     
@@ -63,6 +63,17 @@ if __name__ == "__main__":
             mmr_pred[i] = mmr.rank()
     
     util.evaluateMMR(mmr_pred,test_data,10,similarity_with_users,mmr_lambda)
+    print("PMF: precision_acc,recall_acc,F1,MRR:" + str(pmf.topK(test_data)))
+
+    pmfBPR = PMF()
+    pmfBPR.set_params({"num_feat": 10, "epsilon": 0.01, "_lambda": 0.1, "momentum": 0.8, "maxepoch": 10, "num_batches": 100,
+                    "batch_size": 1000})
+    threshold = 4
+    lambda_user = 0.01
+    lambda_pos = 0.01
+    lambda_neg = 0.01
+    pmfBPR.fitBPR(train_data,test_data,threshold,lambda_user,lambda_pos,lambda_neg)
+    print("PMF-BPR: precision_acc,recall_acc,F1,MRR:" + str(pmfBPR.topK(test_data)))
 
     """
     # Check performance by plotting train and test errors
@@ -75,4 +86,3 @@ if __name__ == "__main__":
     plt.grid()
     plt.show()
     """
-    print("PMF: precision_acc,recall_acc,F1,MRR:" + str(pmf.topK(test_data)))

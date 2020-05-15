@@ -116,7 +116,7 @@ class PMF(object):
                         print('Training RMSE: %f, Test RMSE %f' % (self.rmse_train[-1], self.rmse_test[-1]))
         print(self.w_Item.shape)
         print(self.w_User.shape)
-
+        
     def predict(self, invID):
         return np.dot(self.w_Item, self.w_User[int(invID), :])+ self.mean_inv  # numpy.dot 点乘
 
@@ -175,18 +175,47 @@ class PMF(object):
         num_item = int(max(np.amax(train_vec[:, 1]), np.amax(test_vec[:, 1]))) + 1  # 第1列，movie总数
         
         if (self.w_Item is None):
-            self.w_Item = 0.1* np.random.randn(num_item, self.num_feat)  # numpy.random.randn 电影 M x D 正态分布矩阵
-            self.w_User = 0.1* np.random.randn(num_user, self.num_feat)  # numpy.random.randn 用户 N x D 正态分布矩阵
+            self.w_Item =  0.1 * np.random.randn(num_item, self.num_feat)  # numpy.random.randn 电影 M x D 正态分布矩阵
+            self.w_User =  0.1 * np.random.randn(num_user, self.num_feat)  # numpy.random.randn 用户 N x D 正态分布矩阵
 
+        """
+        self.w_Item.round(3, out=self.w_Item)
+        self.w_User.round(3, out=self.w_User)
+        self.w_Item = np.array(self.w_Item, dtype=np.float64)
+        self.w_User = np.array(self.w_User, dtype=np.float64)
+
+     
+        for i in range(len(self.w_Item)):
+            for j in range(len(self.w_Item[i])):
+                self.w_Item[i][j] = int(self.w_Item[i][j]*1000)/1000
+
+        for i in range(len(self.w_User)):
+            for j in range(len(self.w_User[i])):
+                self.w_User[i][j] = int(self.w_User[i][j]*1000)/1000
+
+        print(max([max(p) for p in self.w_Item]))
+        print(min([min(p) for p in self.w_Item]))
+        """
         triples = self.constructTriples(train_vec,num_user,num_item,threshold)
 
         util = UTIL()
 
         random.shuffle(triples)
-        
+       
         for index in range(len(triples)):
-            x_uij = util.dot_product(self.w_Item[int(triples[index][1])],self.w_User[int(triples[index][0])]) - util.dot_product(self.w_Item[int(triples[index][2])],self.w_User[int(triples[index][0])])
             
+            vi = self.w_Item[int(triples[index][1])].round(3, out = self.w_Item[int(triples[index][1])])
+            vj = self.w_Item[int(triples[index][2])].round(3, out = self.w_Item[int(triples[index][2])])
+            u =  self.w_User[int(triples[index][0])].round(3, out = self.w_User[int(triples[index][0])])
+            
+            x_uij = np.dot(u,vi-vj)
+            #x_uij = np.sum(u * (vi - vj), axis = 0)
+            #x_uij = util.dot_product(vi,u) - util.dot_product(vj,u)
+           
+            #x_uij = util.dot_product(self.w_Item[int(triples[index][1])],self.w_User[int(triples[index][0])]) - util.dot_product(self.w_Item[int(triples[index][2])],self.w_User[int(triples[index][0])])
+            #x_uij = np.dot(self.w_Item[int(triples[index][1])],self.w_User[int(triples[index][0])]) - np.dot(self.w_Item[int(triples[index][2])],self.w_User[int(triples[index][0])])
+            
+            """
             s_user = np.square(self.w_User[int(triples[index][0])])
             ms_user = np.mean(s_user)
             rms_user = np.sqrt(ms_user)
@@ -198,12 +227,27 @@ class PMF(object):
             s_neg = np.square(self.w_Item[int(triples[index][2])])
             ms_neg = np.mean(s_neg)
             rms_neg = np.sqrt(ms_neg)
+            """
+            sigmoid = np.exp(-x_uij) / (1.0 + np.exp(-x_uij))
+            sigmoid_tiled = np.tile(sigmoid, (self.num_feat, 1)).T
 
-        
+            theta_user = self.epsilon *( sigmoid_tiled*(vj - vi )  + lambda_user*u)
+            theta_pos = self.epsilon*(  sigmoid_tiled*(-u) +lambda_pos*vi)
+            theta_neg = self.epsilon*( sigmoid_tiled*(u) +lambda_neg*vj)
+            #lambda x: .5 * (math.tanh(.5 * x) + 1)
+            """
+            theta_user = self.epsilon *( (math.exp(-x_uij)/(1 + math.exp(-x_uij)))*(vi - vj )  + lambda_user*u)
+            theta_pos = self.epsilon*(  (math.exp(-x_uij)/(1 + math.exp(-x_uij)))*(u) +lambda_pos*vi)
+            theta_neg = self.epsilon*( (math.exp(-x_uij)/(1 + math.exp(-x_uij)))*(-u) +lambda_neg*vj)
+            """
+            #theta_user = self.epsilon*( (1 - 0.5 * (math.tanh(.5 * -x_uij) + 1))*(self.w_Item[int(triples[index][1])]-self.w_Item[int(triples[index][2])])+self._lambda*rms_user)
+            #theta_pos = self.epsilon*(  (1- .5 * (math.tanh(.5 * -x_uij) + 1))*(self.w_User[int(triples[index][0])])+self._lambda*rms_pos)
+            #theta_neg = self.epsilon*( (1- .5 * (math.tanh(.5 * -x_uij) + 1))*(-self.w_User[int(triples[index][0])])+self._lambda*rms_neg)
+            """
             theta_user = self.epsilon*( (1 - 1/(1+np.exp(-x_uij)))*(self.w_Item[int(triples[index][1])]-self.w_Item[int(triples[index][2])])+self._lambda*rms_user)
             theta_pos = self.epsilon*(  (1- 1/(1+np.exp(-x_uij)))*(self.w_User[int(triples[index][0])])+self._lambda*rms_pos)
             theta_neg = self.epsilon*( (1- 1/(1+np.exp(-x_uij)))*(-self.w_User[int(triples[index][0])])+self._lambda*rms_neg)
-      
+            """
             """
             #without RMS
             theta_user = self.epsilon*( (1 - 1/(1+np.exp(-x_uij)))*(self.w_Item[int(triples[index][1])]-self.w_Item[int(triples[index][2])])+self._lambda*self.w_User[int(triples[index][0])])
@@ -211,14 +255,22 @@ class PMF(object):
             theta_neg = self.epsilon*( (1 - 1/(1+np.exp(-x_uij)))*(-self.w_User[int(triples[index][0])])+self._lambda*self.w_Item[int(triples[index][2])])
             """
             #sometimes exp(-x_uij) overflows
-            if(len(np.argwhere(np.isnan(theta_user)))==0 ):
-                self.w_User[int(triples[index][0])] += theta_user
-            if(len(np.argwhere(np.isnan(theta_pos)))==0 ):
-                self.w_Item[int(triples[index][1])] += theta_pos
-            if(len(np.argwhere(np.isnan(theta_neg)))==0 ):
-                self.w_Item[int(triples[index][2])] += theta_neg
+            #if(len(np.argwhere(np.isnan(theta_user)))==0 ):
+             #   counter += 1
+            self.w_User[int(triples[index][0])] = self.w_User[int(triples[index][0])] - theta_user
+            #if(len(np.argwhere(np.isnan(theta_pos)))==0 ):
+             #   counter += 1
+            self.w_Item[int(triples[index][1])] = self.w_Item[int(triples[index][1])] - theta_pos
+            #if(len(np.argwhere(np.isnan(theta_neg)))==0 ):
+            self.w_Item[int(triples[index][2])] = self.w_Item[int(triples[index][2])] - theta_neg
             if(index%100000 == 0):
                 print("Iteration "+ str(index)+" PMF-BPR: precision_acc,recall_acc,F1,MRR:" + str(self.topK(test_vec)))
+
+    def sigmoid(self,gamma):
+        if gamma < 0:
+            return round(1 - 1/(1 + math.exp(round(gamma,3))),3)
+        else:
+            return round(1/(1 + math.exp(round(-gamma,3))),3)
 
     def constructTriples(self, train_vec, num_user, num_item, threshold):
         """
